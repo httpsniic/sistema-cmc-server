@@ -131,7 +131,7 @@ app.post('/api/goals', (req, res) => {
   saveDB(db);
   res.json({ success: true });
 });
-const PORT = process.env.PORT || 3000;
+
 // Escuta em 0.0.0.0 para permitir acesso na rede local
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando na porta ${PORT}`);
