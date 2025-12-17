@@ -1,45 +1,27 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
 
-import authRoutes from "./routes/auth.js";
-
-dotenv.config();
+const authRoutes = require("./routes/auth");
 
 const app = express();
 
-// Parse CORS_ORIGINS="https://seusite.netlify.app,http://localhost:3000"
-const allowedOrigins = (process.env.CORS_ORIGINS || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // permite Postman/Render health sem origin
-      if (!origin) return cb(null, true);
-
-      if (allowedOrigins.length === 0) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
-
-      return cb(new Error(`CORS bloqueado para origin: ${origin}`));
-    },
-    credentials: true,
-  })
-);
-
 app.use(express.json());
 
-// health
+app.use(cors({
+  origin: process.env.CORS_ORIGINS.split(","),
+  credentials: true,
+}));
+
+// rota de saúde
 app.get("/api/health", (req, res) => {
   res.json({ status: "online", timestamp: new Date().toISOString() });
 });
 
-// auth
+// rotas de auth
 app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`✅ API rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
