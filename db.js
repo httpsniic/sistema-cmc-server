@@ -1,11 +1,14 @@
-import pkg from "pg";
-const { Pool } = pkg;
+const { Pool } = require("pg");
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  console.warn("⚠️ DATABASE_URL não definido. O backend não vai conectar no Postgres.");
+}
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  connectionString,
+  ssl: connectionString ? { rejectUnauthorized: false } : false,
 });
 
-export default pool;
+module.exports = { pool };

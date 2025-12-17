@@ -1,154 +1,126 @@
-import React, { useState } from 'react';
-import { User, Lock, ArrowRight, UserPlus, LogIn, Loader2 } from 'lucide-react';
-import { db } from '../services/db';
+import React, { useMemo, useState } from "react";
 
-interface LoginScreenProps {
-  onLogin: (username: string) => void;
-}
+type Props = {
+  onLoginSuccess: (token: string) => void;
+};
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+export default function LoginScreen({ onLoginSuccess }: Props) {
+  // FORÇA a URL correta por enquanto (para eliminar variável de ambiente como causa)
+  const API_BASE = "http://127.0.0.1:10000";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [usernameOrEmail, setUsernameOrEmail] = useState("master");
+  const [password, setPassword] = useState("123456");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const canSubmit = useMemo(() => {
+    return usernameOrEmail.trim().length > 0 && password.trim().length > 0 && !loading;
+  }, [usernameOrEmail, password, loading]);
+
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    if (!username || !password) {
-      setError('Preencha todos os campos.');
-      setIsLoading(false);
-      return;
-    }
+    setError("");
+    setLoading(true);
 
     try {
-      if (isRegistering) {
-        const success = await db.auth.register(username, password);
-        if (success) {
-          onLogin(username);
-        } else {
-          setError('Usuário já existe.');
-        }
-      } else {
-        const success = await db.auth.login(username, password);
-        if (success) {
-          onLogin(username);
-        } else {
-          setError('Usuário ou senha incorretos.');
-        }
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernameOrEmail, password }),
+      });
+
+      const text = await res.text(); // lê como texto primeiro
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        // se não for JSON, a gente mostra o texto
       }
-    } catch (err) {
-      setError('Ocorreu um erro. Tente novamente.');
+
+      if (!res.ok) {
+        setError(data?.error || `HTTP ${res.status}: ${text}`);
+        return;
+      }
+
+      if (data?.ok !== true) {
+        setError(data?.error || "Falha no login");
+        return;
+      }
+
+      if (!data?.token) {
+        setError("Login OK, mas token não retornado.");
+        return;
+      }
+
+      onLoginSuccess(data.token);
+    } catch (err: any) {
+      // mostra o erro real do fetch (CORS, Failed to fetch, etc)
+      setError(`Erro de conexão: ${err?.message || String(err)}`);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
-        <div className="p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold text-blue-600 tracking-tight mb-2">
-              Controle Financeiro
-            </h1>
-            <p className="text-slate-500">
-              {isRegistering ? 'Crie sua conta para começar' : 'Entre para gerenciar seus custos'}
-            </p>
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", fontFamily: "Arial, sans-serif" }}>
+      <form
+        onSubmit={handleLogin}
+        style={{
+          width: 420,
+          padding: 24,
+          borderRadius: 16,
+          border: "1px solid #eee",
+          boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+          background: "#fff",
+        }}
+      >
+        <h1 style={{ margin: 0, color: "#2f63ff" }}>Controle Financeiro</h1>
+        <div style={{ marginTop: 6, marginBottom: 18, color: "#666" }}>Entrar no sistema</div>
+
+        <label style={{ display: "block", fontSize: 14, marginBottom: 6 }}>Usuário ou Email</label>
+        <input
+          value={usernameOrEmail}
+          onChange={(e) => setUsernameOrEmail(e.target.value)}
+          style={{ width: "100%", padding: "12px", borderRadius: 10, border: "1px solid #ddd", marginBottom: 14 }}
+        />
+
+        <label style={{ display: "block", fontSize: 14, marginBottom: 6 }}>Senha</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ width: "100%", padding: "12px", borderRadius: 10, border: "1px solid #ddd", marginBottom: 14 }}
+        />
+
+        {error ? (
+          <div style={{ background: "#ffe6e6", border: "1px solid #ffb3b3", color: "#a40000", padding: 10, borderRadius: 10, marginBottom: 12, fontSize: 14 }}>
+            {error}
           </div>
+        ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Usuário</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  name="username"
-                  autoComplete="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out sm:text-sm"
-                  placeholder="Seu nome de usuário"
-                />
-              </div>
-            </div>
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          style={{
+            width: "100%",
+            padding: "12px",
+            borderRadius: 12,
+            border: "none",
+            cursor: canSubmit ? "pointer" : "not-allowed",
+            background: "#2f63ff",
+            color: "#fff",
+            fontSize: 16,
+            fontWeight: 700,
+            opacity: canSubmit ? 1 : 0.6,
+          }}
+        >
+          {loading ? "Entrando..." : "Entrar"}
+        </button>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Senha</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="password"
-                  name="password"
-                  autoComplete={isRegistering ? "new-password" : "current-password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out sm:text-sm"
-                  placeholder="Sua senha"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Processando...
-                </>
-              ) : isRegistering ? (
-                <>
-                  <UserPlus className="w-5 h-5" /> Criar Conta
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-5 h-5" /> Entrar
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsRegistering(!isRegistering);
-                setError('');
-                setUsername('');
-                setPassword('');
-              }}
-              className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors flex items-center justify-center gap-1 mx-auto"
-            >
-              {isRegistering ? (
-                <>Já tem uma conta? Entre aqui <ArrowRight className="w-4 h-4" /></>
-              ) : (
-                <>Não tem conta? Crie agora <ArrowRight className="w-4 h-4" /></>
-              )}
-            </button>
-          </div>
+        <div style={{ marginTop: 14, fontSize: 12, color: "#777" }}>
+          API: <strong>{API_BASE}</strong>
         </div>
-        <div className="bg-slate-50 px-8 py-4 border-t border-slate-100">
-          <p className="text-xs text-center text-slate-400">
-            Sistema seguro. Seus dados são criptografados localmente.
-          </p>
-        </div>
-      </div>
+      </form>
     </div>
   );
-};
+}
