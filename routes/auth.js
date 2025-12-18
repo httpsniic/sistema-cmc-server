@@ -1,27 +1,23 @@
-const express = require("express");
-const jwt = require("jsonwebtoken");
+import express from "express";
+import jwt from "jsonwebtoken";
+
 const router = express.Router();
 
-// LOGIN
-router.post("/login", async (req, res) => {
+router.post("/login", (req, res) => {
   const { username, password } = req.body;
 
-  // credenciais fixas (por enquanto)
   if (username !== "master" || password !== "master") {
     return res.status(401).json({ error: "Usuário ou senha inválidos" });
   }
 
-  const token = jwt.sign({ user: "master", role: "admin" }, process.env.JWT_SECRET, {
-    expiresIn: "8h",
-  });
+  const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+
+  const token = jwt.sign({ user: "master" }, secret, { expiresIn: "8h" });
 
   res.json({
     token,
-    user: {
-      username: "master",
-      role: "admin",
-    },
+    user: { username: "master", role: "admin" },
   });
 });
 
-module.exports = router;
+export default router;
