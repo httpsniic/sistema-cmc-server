@@ -10,7 +10,7 @@ import { KPICards } from './components/KPICards';
 import { LoginScreen } from './components/LoginScreen';
 import { Transaction, Group, Supplier, Goal, Metrics } from './types';
 import { parseDate } from './utils';
-import { db } from './services/db';
+import { db } from '../services/db';
 
 const MESES_NOMES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
